@@ -1,0 +1,29 @@
+{
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true,
+    "editor.detectIndentation": false,
+    "editor.formatOnSave": true,
+    "editor.wordWrapColumn": 300,
+    "dart.lineLength": 300,
+    "[dart]": {
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true,
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "Dart-Code.dart-code",
+        "editor.wordWrapColumn": 300,
+        "dart.lineLength": 300
+    },
+    "[rust]": {
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true,
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "rust-analyzer",
+        "editor.wordWrapColumn": 300
+    },
+    "[shellscript]": {
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true,
+        "editor.formatOnSave": true,
+        "editor.wordWrapColumn": 300
+    }
+}

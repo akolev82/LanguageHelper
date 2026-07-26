@@ -2,15 +2,15 @@
 use dioxus::prelude::*;
 
 fn main() {
-    dioxus::launch(App);
+  dioxus::launch(App);
 }
 
 fn App() -> Element {
-    rsx! {
-        div {
-            class: "translation-grid",
-            h1 { "Translation Editor" }
-            // TODO: Render grid based on data from extension host
-        }
-    }
+  rsx! {
+      div {
+          class: "translation-grid",
+          h1 { "Translation Editor" }
+          // TODO: Render grid based on data from extension host
+      }
+  }
 }

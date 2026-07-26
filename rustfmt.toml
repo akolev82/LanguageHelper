@@ -1,0 +1,6 @@
+# rustfmt.toml
+tab_spaces = 2
+hard_tabs = false
+max_width = 300
+use_small_heuristics = "Max"
+fn_params_layout = "Compressed"
