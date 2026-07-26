@@ -1,0 +1,38 @@
+{
+  "name": "language-helper",
+  "displayName": "Language Helper",
+  "description": "Grid-based translation editor using Rust",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:languageHelper.openGrid"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "languageHelper.openGrid",
+        "title": "Open Translation Grid"
+      }
+    ]
+  },
+  "scripts": {
+    "copy-wasm": "node -e \"require('fs').copyFileSync('dist/core/core_bg.wasm', 'dist/core_bg.wasm')\"",
+    "build:core": "cd crates/core && wasm-pack build --target nodejs --out-dir ../../dist/core && node -e \"require('fs').copyFileSync('../../dist/core/core_bg.wasm', '../../dist/core_bg.wasm')\"",
+    "build:webview": "cd crates/webview && wasm-pack build --target web --out-dir ../../dist/webview",
+    "build:ext": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
+    "build": "npm run build:core && npm run build:webview && npm run build:ext",
+    "watch": "npm run copy-wasm && esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --watch"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.80.0",
+    "esbuild": "^0.18.0",
+    "typescript": "^5.1.0"
+  }
+}

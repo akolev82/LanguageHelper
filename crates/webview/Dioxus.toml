@@ -1,0 +1,4 @@
+[application]
+name = "webview"
+default_platform = "web"
+out_dir = "../../dist/webview"

@@ -1,0 +1,9 @@
+# Dependencies
+node_modules/
+# Build outputs
+dist/
+# Rust build target directory
+target/
+# Miscellaneous
+*.log
+.DS_Store
