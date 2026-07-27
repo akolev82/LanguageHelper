@@ -6,7 +6,10 @@ pub struct FluentAdapter;
 
 impl TranslationAdapter for FluentAdapter {
   fn load(&self, source: &str) -> Result<ProjectTranslations, String> {
-    let resource = parse(source).map_err(|e| format!("Parse error: {:?}", e.1))?;
+    let resource = match parse(source) {
+      Ok(res) => res,
+      Err((res, _errs)) => res,
+    };
 
     let mut items = Vec::new();
 

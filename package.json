@@ -1,23 +1,21 @@
 {
   "name": "language-helper",
   "displayName": "Language Helper",
-  "description": "Grid-based translation editor using Rust",
-  "version": "0.0.1",
+  "description": "Grid-based translation editor",
+  "version": "1.0.0",
   "engines": {
     "vscode": "^1.80.0"
   },
   "categories": [
     "Other"
   ],
-  "activationEvents": [
-    "onCommand:languageHelper.openGrid"
-  ],
+  "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "languageHelper.openGrid",
-        "title": "Open Translation Grid"
+        "title": "Developer: Open Translation Grid"
       }
     ]
   },
