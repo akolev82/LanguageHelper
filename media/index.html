@@ -29,41 +29,64 @@
             <button class="btn btn-primary" id="saveBtn">Save Changes</button>
         </div>
     </div>
-    <input type="text" id="searchInput" class="search-box" placeholder="Filter by key or translation..." />
+    <div id="appLayout" class="app-layout">
+        <div id="leftContainer" class="left-container">
+            <input type="text" id="searchInput" class="search-box" placeholder="Filter by key or translation..." />
 
-    <table>
-        <thead>
-            <tr id="headerRow">
-                <th class="col-select"><input type="checkbox" id="selectAllCheckbox" title="Select All Visible" /></th>
-                <th class="col-file">File</th>
-                <th class="col-key">Key</th>
-            </tr>
-        </thead>
-        <tbody id="tableBody"></tbody>
-    </table>
+            <div class="table-scroll-container">
+                <table>
+                    <thead>
+                        <tr id="headerRow">
+                            <th class="col-select"><input type="checkbox" id="selectAllCheckbox" title="Select All Visible" /></th>
+                            <th class="col-file">File</th>
+                            <th class="col-key">Key</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
 
-    <div class="pagination-container">
-        <div class="pagination-info" id="paginationInfo">Showing 0 of 0 items</div>
-        <div class="pagination-controls">
-            <label style="font-size: 0.85rem; font-weight: 600;">Module:</label>
-            <select id="moduleFilterSelect" class="select-box">
-                <option value="">All Modules (Files)</option>
-            </select>
-            <button class="btn btn-secondary" id="addModuleBtn" style="padding: 4px 8px; font-size: 0.85rem;">+ Add Module</button>
+            <div class="pagination-container">
+                <div class="pagination-info" id="paginationInfo">Showing 0 of 0 items</div>
+                <div class="pagination-controls">
+                    <label style="font-size: 0.85rem; font-weight: 600;">Module:</label>
+                    <select id="moduleFilterSelect" class="select-box">
+                        <option value="">All Modules (Files)</option>
+                    </select>
+                    <button class="btn btn-secondary" id="addModuleBtn" style="padding: 4px 8px; font-size: 0.85rem;">+ Add Module</button>
 
-            <span style="margin: 0 4px; border-left: 1px solid var(--vscode-widget-border, #444); height: 16px;"></span>
+                    <span style="margin: 0 4px; border-left: 1px solid var(--vscode-widget-border, #444); height: 16px;"></span>
 
-            <label style="font-size: 0.85rem;">Items per page:</label>
-            <select id="pageSizeSelect" class="select-box">
-                <option value="25">25</option>
-                <option value="50" selected>50</option>
-                <option value="100">100</option>
-                <option value="250">250</option>
-                <option value="all">All</option>
-            </select>
-            <button class="btn btn-secondary" id="prevPageBtn" disabled>&laquo; Prev</button>
-            <span id="pageIndicator" style="font-size: 0.85rem; font-weight: 600;">Page 1 of 1</span>
-            <button class="btn btn-secondary" id="nextPageBtn" disabled>Next &raquo;</button>
+                    <label style="font-size: 0.85rem;">Items per page:</label>
+                    <select id="pageSizeSelect" class="select-box">
+                        <option value="25">25</option>
+                        <option value="50" selected>50</option>
+                        <option value="100">100</option>
+                        <option value="250">250</option>
+                        <option value="all">All</option>
+                    </select>
+                    <button class="btn btn-secondary" id="prevPageBtn" disabled>&laquo; Prev</button>
+                    <span id="pageIndicator" style="font-size: 0.85rem; font-weight: 600;">Page 1 of 1</span>
+                    <button class="btn btn-secondary" id="nextPageBtn" disabled>Next &raquo;</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="panelSplitter" class="splitter" title="Drag to resize panels"></div>
+
+        <div id="rightPanel" class="right-panel">
+            <div class="panel-header">
+                <div class="panel-title-area">
+                    <h2 id="panelTitle">No Item Selected</h2>
+                    <span id="panelSubtitle" class="panel-subtitle">Select a row in the table to edit all locale translations</span>
+                </div>
+            </div>
+            <input type="text" id="panelLocaleSearchInput" class="search-box" style="margin-bottom: 12px; display: none;" placeholder="Search locales..." />
+            <div id="panelLocalesContainer" class="panel-locales-container">
+                <div class="empty-selection-placeholder">
+                    <span>👈 Click any key on the left to edit translations for all locales</span>
+                </div>
+            </div>
         </div>
     </div>
 

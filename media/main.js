@@ -20,6 +20,15 @@ const bulkMoveBtn = document.getElementById('bulkMoveBtn');
 const selectAllCheckbox = document.getElementById('selectAllCheckbox');
 const unsavedBanner = document.getElementById('unsavedBanner');
 
+// Panel elements
+const leftContainer = document.getElementById('leftContainer');
+const panelSplitter = document.getElementById('panelSplitter');
+const rightPanel = document.getElementById('rightPanel');
+const panelTitle = document.getElementById('panelTitle');
+const panelSubtitle = document.getElementById('panelSubtitle');
+const panelLocalesContainer = document.getElementById('panelLocalesContainer');
+const panelLocaleSearchInput = document.getElementById('panelLocaleSearchInput');
+
 const addModal = document.getElementById('addModal');
 const newFile = document.getElementById('newFile');
 const newKey = document.getElementById('newKey');
@@ -65,6 +74,45 @@ const selectedRowIds = new Set(); // rowId set for selected rows
 let pendingDeleteRows = [];
 let editingRowId = null;
 let currentConflictsData = null;
+let activeRowId = null; // currently selected row for the right panel
+
+// Splitter state
+let isDragging = false;
+let startX, startWidth;
+
+// Initialize splitter width from vscode state if available
+const lastState = vscode.getState();
+if (lastState && lastState.leftContainerWidth) {
+  leftContainer.style.flex = 'none';
+  leftContainer.style.width = lastState.leftContainerWidth + 'px';
+}
+
+panelSplitter.addEventListener('mousedown', (e) => {
+  isDragging = true;
+  startX = e.clientX;
+  startWidth = leftContainer.getBoundingClientRect().width;
+  panelSplitter.classList.add('dragging');
+  document.body.style.cursor = 'col-resize';
+  e.preventDefault();
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  const newWidth = startWidth + (e.clientX - startX);
+  if (newWidth > 200 && newWidth < window.innerWidth - 200) {
+    leftContainer.style.flex = 'none';
+    leftContainer.style.width = newWidth + 'px';
+  }
+});
+
+document.addEventListener('mouseup', () => {
+  if (isDragging) {
+    isDragging = false;
+    panelSplitter.classList.remove('dragging');
+    document.body.style.cursor = 'default';
+    vscode.setState({ leftContainerWidth: leftContainer.getBoundingClientRect().width });
+  }
+});
 
 function getRowStatus(row) {
   const id = getRowId(row);
@@ -83,11 +131,6 @@ function updateUnsavedStatus() {
 // Setup Headers & Inputs
 const thStatus = document.createElement('th');
 thStatus.className = 'col-status'; thStatus.textContent = 'Status'; headerRow.appendChild(thStatus);
-locales.forEach(loc => {
-  const th = document.createElement('th');
-  th.textContent = loc.toUpperCase();
-  headerRow.appendChild(th);
-});
 const thActions = document.createElement('th');
 thActions.className = 'col-actions'; thActions.textContent = 'Action'; headerRow.appendChild(thActions);
 
@@ -195,14 +238,18 @@ function renderTable(filterText = searchInput.value) {
     const isSelected = selectedRowIds.has(id);
 
     const tr = document.createElement('tr');
+    if (activeRowId === id) tr.style.border = '2px solid var(--vscode-focusBorder)';
+    
     if (isSelected) tr.classList.add('selected');
     else if (status === 'new') tr.classList.add('row-added');
     else if (status === 'modified') tr.classList.add('row-modified');
 
     tr.addEventListener('click', (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.closest('button')) return;
-      if (isSelected) selectedRowIds.delete(id); else selectedRowIds.add(id);
+      if (e.target.tagName === 'INPUT' && e.target.type === 'checkbox') return;
+      if (e.target.closest('button')) return;
+      activeRowId = id;
       renderTable(searchInput.value);
+      renderRightPanel();
     });
 
     const tdSelect = document.createElement('td'); tdSelect.className = 'col-select';
@@ -223,15 +270,7 @@ function renderTable(filterText = searchInput.value) {
     spanBadge.textContent = status === 'new' ? 'New' : status === 'modified' ? 'Modified' : 'Saved';
     tdStatus.appendChild(spanBadge); tr.appendChild(tdStatus);
 
-    locales.forEach(loc => {
-      const td = document.createElement('td');
-      const input = document.createElement('input'); input.type = 'text'; input.value = row.translations[loc] || '';
-      input.addEventListener('input', (e) => {
-        row.translations[loc] = e.target.value;
-        renderTable(searchInput.value);
-      });
-      td.appendChild(input); tr.appendChild(td);
-    });
+
 
     const tdActions = document.createElement('td'); tdActions.className = 'col-actions';
     const editBtn = document.createElement('button'); editBtn.className = 'btn-row-action edit';
@@ -453,6 +492,87 @@ saveBtn.addEventListener('click', () => {
   originalRows.clear();
   rows.forEach(r => originalRows.set(getRowId(r), JSON.stringify(r.translations)));
   renderTable();
+  renderRightPanel();
 });
 
+panelLocaleSearchInput.addEventListener('input', () => {
+  renderRightPanel();
+});
+
+function renderRightPanel() {
+  if (!activeRowId) {
+    panelTitle.textContent = 'No Item Selected';
+    panelSubtitle.textContent = 'Select a row in the table to edit all locale translations';
+    panelLocaleSearchInput.style.display = 'none';
+    panelLocalesContainer.innerHTML = '<div class="empty-selection-placeholder"><span>👈 Click any key on the left to edit translations for all locales</span></div>';
+    return;
+  }
+  
+  const row = rows.find(r => getRowId(r) === activeRowId);
+  if (!row) {
+    activeRowId = null;
+    renderRightPanel();
+    return;
+  }
+
+  panelTitle.textContent = row.key;
+  panelSubtitle.textContent = row.file;
+  panelLocaleSearchInput.style.display = 'block';
+  
+  const searchQuery = panelLocaleSearchInput.value.toLowerCase();
+  
+  panelLocalesContainer.innerHTML = '';
+  locales.forEach(loc => {
+    if (searchQuery && !loc.toLowerCase().includes(searchQuery)) return;
+    
+    const origStr = originalRows.get(activeRowId);
+    let origVal = '';
+    if (origStr) {
+      try {
+        const parsed = JSON.parse(origStr);
+        origVal = parsed[loc] || '';
+      } catch (e) {}
+    }
+    const currentVal = row.translations[loc] || '';
+    const isDirty = origVal !== currentVal;
+
+    const card = document.createElement('div');
+    card.className = 'locale-card';
+    
+    const header = document.createElement('div');
+    header.className = 'locale-card-header';
+    
+    const titleSpan = document.createElement('span');
+    titleSpan.className = 'locale-name';
+    titleSpan.textContent = loc.toUpperCase();
+    
+    const dirtySpan = document.createElement('span');
+    dirtySpan.className = 'locale-dirty-indicator' + (isDirty ? ' dirty' : '');
+    dirtySpan.textContent = '• Modified';
+    
+    header.appendChild(titleSpan);
+    header.appendChild(dirtySpan);
+    
+    const input = document.createElement('textarea');
+    input.className = 'locale-input';
+    input.value = currentVal;
+    input.placeholder = `Translation for ${loc}`;
+    input.addEventListener('input', (e) => {
+      row.translations[loc] = e.target.value;
+      const newIsDirty = origVal !== e.target.value;
+      if (newIsDirty) {
+        dirtySpan.classList.add('dirty');
+      } else {
+        dirtySpan.classList.remove('dirty');
+      }
+      renderTable(searchInput.value);
+    });
+    
+    card.appendChild(header);
+    card.appendChild(input);
+    panelLocalesContainer.appendChild(card);
+  });
+}
+
 renderTable();
+renderRightPanel();
