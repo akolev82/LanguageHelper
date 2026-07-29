@@ -1,8 +1,31 @@
 pub mod config;
 pub mod format;
+pub mod layout;
 
 use format::{AdapterFactory, TranslationAdapterFactory};
 use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen]
+pub fn compile_layout(layout: &str) -> String {
+  match layout::compile_layout(layout) {
+    Ok(token) => serde_json::to_string(&token).unwrap_or_else(|_| "{}".to_string()),
+    Err(e) => serde_json::to_string(&serde_json::json!({ "error": e })).unwrap_or_else(|_| "{\"error\":\"Error\"}".to_string()),
+  }
+}
+
+#[wasm_bindgen]
+pub fn get_layout_glob(layout: &str, locales_json: Option<String>) -> String {
+  let locales: Vec<String> = locales_json.as_deref().and_then(|s| serde_json::from_str(s).ok()).unwrap_or_default();
+  layout::get_layout_glob(layout, &locales)
+}
+
+#[wasm_bindgen]
+pub fn match_layout_files(layout: &str, file_paths_json: &str, locales_json: Option<String>) -> String {
+  let file_paths: Vec<String> = serde_json::from_str(file_paths_json).unwrap_or_default();
+  let locales: Vec<String> = locales_json.as_deref().and_then(|s| serde_json::from_str(s).ok()).unwrap_or_default();
+  let matched = layout::match_layout_files(layout, &file_paths, &locales);
+  serde_json::to_string(&matched).unwrap_or_else(|_| "[]".to_string())
+}
 
 #[wasm_bindgen]
 pub fn parse_format(format_name: &str, source: &str) -> String {

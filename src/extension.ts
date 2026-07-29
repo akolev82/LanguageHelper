@@ -8,6 +8,7 @@ const coreWasm = require('../dist/core/core.js');
 interface ProjectConfig {
   format: string;
   file_layout: string;
+  locales: string[];
 }
 
 interface TranslationItem {
@@ -30,10 +31,11 @@ export function activate(context: vscode.ExtensionContext) {
       vscode.window.showErrorMessage('No workspace folder open.');
       return;
     }
-    console.log("Workspace: ", workspaceFolders);
 
     const rootUri = workspaceFolders[0].uri;
+    console.log("Workspace: ", rootUri);
     const configUri = vscode.Uri.joinPath(rootUri, 'language-helper.json');
+    console.log("configUri: ", configUri);
 
     let config: ProjectConfig;
     try {
@@ -46,6 +48,10 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
     console.log("config: ", config);
+    if (!config.locales || !config.locales.length) {
+      vscode.window.showErrorMessage('No locales found in language-helper.json');
+      return;
+    }
 
     const panel = vscode.window.createWebviewPanel(
       'languageHelperGrid',
@@ -57,39 +63,41 @@ export function activate(context: vscode.ExtensionContext) {
       }
     );
 
-    const cleanLayout = config.file_layout.replace(/^\.\//, '').replace(/\\/g, '/');
-    console.log("config.file_layout: ", config.file_layout, " cleanLayout: ", cleanLayout);
-    // Convert file_layout to glob pattern (e.g. translations/locales/{locale}/{file}.ftl -> translations/locales/*/*.ftl)
-    const globPattern = cleanLayout
-      .replace('{locale}', '*')
-      .replace('{file}', '*');
+    const tokensJson = coreWasm.compile_layout(config.file_layout);
+    console.log("Parsed Tokens from Rust:\n" + tokensJson);
 
-    const files = await vscode.workspace.findFiles(globPattern);
-    console.log("Found files count: ", files.length);
+    const localesJson = JSON.stringify(config.locales);
+    const globPattern = coreWasm.get_layout_glob(config.file_layout, localesJson);
+    console.log("globPattern from Rust: ", globPattern);
 
-    // Parse layout regex to extract locale and file basename
-    // e.g. "translations/locales/{locale}/{file}.ftl" -> /^translations\/locales\/([^/]+)\/(.+)\.ftl$/
-    const layoutRegexStr = '^' + cleanLayout
-      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      .replace('\\{locale\\}', '([^/]+)')
-      .replace('\\{file\\}', '(.+)') + '$';
-    const layoutRegex = new RegExp(layoutRegexStr);
+    let fileUris = await vscode.workspace.findFiles(globPattern);
+    console.log("Found files count: ", fileUris.length);
+
+    const normalizePath = (p: string) => p.replace(/\\/g, '/').replace(/^[\.\/]+/, '');
+
+    const relativePaths = fileUris.map(uri => normalizePath(vscode.workspace.asRelativePath(uri, false)));
+    const matchedFilesJson = coreWasm.match_layout_files(config.file_layout, JSON.stringify(relativePaths), localesJson);
+    const matchedFiles: Array<{ relative_path: string; locale: string; file_basename: string }> = JSON.parse(matchedFilesJson);
+
+    const matchedMap = new Map<string, { locale: string; file_basename: string }>();
+    for (const item of matchedFiles) {
+      matchedMap.set(normalizePath(item.relative_path), item);
+    }
 
     const gridMap: Map<string, GridRow> = new Map();
     const localesSet: Set<string> = new Set();
     const rawFileContents: Map<string, string> = new Map(); // relativePath -> content
 
-    for (const fileUri of files) {
-      const relativePath = vscode.workspace.asRelativePath(fileUri, false).replace(/\\/g, '/').replace(/^\.\//, '');
-      console.log("relativePath: ", relativePath);
-      const match = relativePath.match(layoutRegex);
+    for (const fileUri of fileUris) {
+      const relativePath = normalizePath(vscode.workspace.asRelativePath(fileUri, false));
+      const match = matchedMap.get(relativePath);
       if (!match) {
-        console.log("No match for relativePath:", relativePath, "with regex:", layoutRegexStr);
+        console.log("No layout match for relativePath:", relativePath);
         continue;
       }
 
-      const locale = match[1];
-      const fileBasename = match[2];
+      const locale = match.locale;
+      const fileBasename = match.file_basename;
       localesSet.add(locale);
 
       const fileBytes = await vscode.workspace.fs.readFile(fileUri);
@@ -97,7 +105,7 @@ export function activate(context: vscode.ExtensionContext) {
       rawFileContents.set(relativePath, fileContent);
 
       const parsedJson = coreWasm.parse_format(config.format, fileContent);
-      console.log(`parse_format result for ${relativePath}:`, parsedJson);
+      //console.log(`parse_format result for ${relativePath}:`, parsedJson);
       const parsed: { items?: TranslationItem[], error?: string } = JSON.parse(parsedJson);
 
       if (parsed.error) {
@@ -119,7 +127,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
     }
 
-    const locales = Array.from(localesSet).sort();
+    const locales = config.locales && config.locales.length > 0 ? config.locales : Array.from(localesSet).sort();
     let rows = Array.from(gridMap.values());
     console.log(`Loaded ${rows.length} rows across ${locales.length} locales:`, locales);
 
@@ -138,12 +146,14 @@ export function activate(context: vscode.ExtensionContext) {
     const reloadExternalChanges = async (changedUri: vscode.Uri) => {
       if (isSavingInternal) return;
 
-      const relativePath = vscode.workspace.asRelativePath(changedUri, false);
-      const match = relativePath.match(layoutRegex);
-      if (!match) return;
+      const relativePath = normalizePath(vscode.workspace.asRelativePath(changedUri, false));
+      const matchedJson = coreWasm.match_layout_files(config.file_layout, JSON.stringify([relativePath]));
+      const matchedList: Array<{ relative_path: string; locale: string; file_basename: string }> = JSON.parse(matchedJson);
+      if (!matchedList || matchedList.length === 0) return;
 
-      const locale = match[1];
-      const fileBasename = match[2];
+      const locale = matchedList[0].locale;
+      const fileBasename = matchedList[0].file_basename;
+
 
       try {
         const fileBytes = await vscode.workspace.fs.readFile(changedUri);
@@ -198,10 +208,10 @@ export function activate(context: vscode.ExtensionContext) {
             }
           }
 
-          // Re-scan files to include newly created files in files array
+          // Re-scan files to include newly created files in fileUris array
           const newFiles = await vscode.workspace.findFiles(globPattern);
-          files.length = 0;
-          files.push(...newFiles);
+          fileUris.length = 0;
+          fileUris.push(...newFiles);
 
           vscode.window.showInformationMessage(`Created module '${moduleName}' across all locales.`);
         } catch (e) {
@@ -269,7 +279,11 @@ function getWebviewContent(
   extensionUri: vscode.Uri,
   initialData: { locales: string[]; rows: GridRow[] }
 ) {
-  const dataJson = JSON.stringify(initialData);
+  const dataJson = JSON.stringify(initialData)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -728,6 +742,7 @@ function getWebviewContent(
         const headerRow = document.getElementById('headerRow');
         const tableBody = document.getElementById('tableBody');
         const searchInput = document.getElementById('searchInput');
+        const statusFilterSelect = document.getElementById('statusFilterSelect');
         const moduleFilterSelect = document.getElementById('moduleFilterSelect');
         const saveBtn = document.getElementById('saveBtn');
         const addRowBtn = document.getElementById('addRowBtn');
@@ -1090,7 +1105,7 @@ function getWebviewContent(
                 if (selectedStatus === 'modified' && !isModified) return false;
                 if (selectedStatus === 'new' && !isAdded) return false;
                 if (filterText) {
-                    return row.file.toLowerCase().includes(lowerFilter) || row.key.toLowerCase().includes(lowerFilter) || Object.values(row.translations).some(v => v.toLowerCase().includes(lowerFilter));
+                    return (row.file || '').toLowerCase().includes(lowerFilter) || (row.key || '').toLowerCase().includes(lowerFilter) || Object.values(row.translations || {}).some(v => (v || '').toString().toLowerCase().includes(lowerFilter));
                 }
                 return true;
             });

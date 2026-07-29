@@ -1,4 +1,5 @@
 pub mod fluent;
+pub mod json;
 
 use serde::{Deserialize, Serialize};
 
@@ -28,6 +29,7 @@ impl TranslationAdapterFactory for AdapterFactory {
   fn create_adapter(&self, format: &str) -> Result<Box<dyn TranslationAdapter>, String> {
     match format.to_lowercase().as_str() {
       "fluent" | "ftl" => Ok(Box::new(fluent::FluentAdapter)),
+      "json" => Ok(Box::new(json::JsonAdapter)),
       _ => Err(format!("Unsupported translation format: {}", format)),
     }
   }

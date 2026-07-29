@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 pub struct ProjectConfig {
   pub file_layout: String,
   pub format: String,
+  pub locales: Vec<String>,
 }
 
 impl ProjectConfig {
