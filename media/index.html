@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Translation Grid</title>
+    <link rel="stylesheet" type="text/css" href="${styleUri}">
+</head>
+<body>
+    <div id="unsavedBanner" class="unsaved-banner">
+        <span>⚠️ Unsaved Changes (You have modifications or newly added translations)</span>
+    </div>
+    <div class="header">
+        <div class="title-container">
+            <h1>Translation Editor</h1>
+            <span class="subtitle">made by Aleksandar Kolev @ 2026 v.1.0.0</span>
+            <span class="powered-by" style="font-size: 0.7rem; color: var(--vscode-descriptionForeground);">powered by LogoMech</span>
+        </div>
+        <div class="toolbar">
+            <select id="statusFilterSelect" class="select-box">
+                <option value="">All Statuses</option>
+                <option value="unsaved">All Unsaved Changes</option>
+                <option value="modified">Modified Items</option>
+                <option value="new">New Items</option>
+            </select>
+            <button class="btn btn-secondary" id="addRowBtn">+ Add Translation</button>
+            <button class="btn btn-secondary" id="bulkMoveBtn" disabled>Move to Module</button>
+            <button class="btn btn-danger" id="deleteSelectedBtn" disabled>Delete Selected</button>
+            <button class="btn btn-primary" id="saveBtn">Save Changes</button>
+        </div>
+    </div>
+    <input type="text" id="searchInput" class="search-box" placeholder="Filter by key or translation..." />
+
+    <table>
+        <thead>
+            <tr id="headerRow">
+                <th class="col-select"><input type="checkbox" id="selectAllCheckbox" title="Select All Visible" /></th>
+                <th class="col-file">File</th>
+                <th class="col-key">Key</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+
+    <div class="pagination-container">
+        <div class="pagination-info" id="paginationInfo">Showing 0 of 0 items</div>
+        <div class="pagination-controls">
+            <label style="font-size: 0.85rem; font-weight: 600;">Module:</label>
+            <select id="moduleFilterSelect" class="select-box">
+                <option value="">All Modules (Files)</option>
+            </select>
+            <button class="btn btn-secondary" id="addModuleBtn" style="padding: 4px 8px; font-size: 0.85rem;">+ Add Module</button>
+
+            <span style="margin: 0 4px; border-left: 1px solid var(--vscode-widget-border, #444); height: 16px;"></span>
+
+            <label style="font-size: 0.85rem;">Items per page:</label>
+            <select id="pageSizeSelect" class="select-box">
+                <option value="25">25</option>
+                <option value="50" selected>50</option>
+                <option value="100">100</option>
+                <option value="250">250</option>
+                <option value="all">All</option>
+            </select>
+            <button class="btn btn-secondary" id="prevPageBtn" disabled>&laquo; Prev</button>
+            <span id="pageIndicator" style="font-size: 0.85rem; font-weight: 600;">Page 1 of 1</span>
+            <button class="btn btn-secondary" id="nextPageBtn" disabled>Next &raquo;</button>
+        </div>
+    </div>
+
+    <!-- Add Translation Modal -->
+    <div class="modal-backdrop" id="addModal">
+        <div class="modal">
+            <h2>Add New Translation</h2>
+            <div class="form-group">
+                <label for="newFile">Module (File Basename)</label>
+                <select id="newFile" class="select-box" style="width: 100%;"></select>
+            </div>
+            <div class="form-group">
+                <label for="newKey">Key</label>
+                <input type="text" id="newKey" placeholder="e.g. welcome-message" />
+            </div>
+            <div id="localeInputsContainer"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelAddBtn">Cancel</button>
+                <button class="btn btn-primary" id="confirmAddBtn">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Translation Modal -->
+    <div class="modal-backdrop" id="editModal">
+        <div class="modal">
+            <h2>Edit Translation</h2>
+            <div class="form-group">
+                <label for="editModuleSelect">Module (File)</label>
+                <select id="editModuleSelect" class="select-box" style="width: 100%;"></select>
+            </div>
+            <div class="form-group">
+                <label for="editKey">Key</label>
+                <input type="text" id="editKey" />
+            </div>
+            <div id="editLocaleInputsContainer"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelEditBtn">Cancel</button>
+                <button class="btn btn-primary" id="confirmEditBtn">Update</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal-backdrop" id="deleteConfirmModal">
+        <div class="modal">
+            <h2>Confirm Deletion</h2>
+            <p id="deleteConfirmMessage" style="font-size: 0.9rem; margin: 14px 0; color: var(--vscode-editor-foreground); line-height: 1.4;"></p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelDeleteBtn">Cancel</button>
+                <button class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conflict Resolution Modal -->
+    <div class="modal-backdrop" id="conflictModal">
+        <div class="modal" style="width: 680px; max-width: 95%;">
+            <h2>Conflict Detected in Translation File</h2>
+            <p id="conflictModalDesc" style="font-size: 0.85rem; color: var(--vscode-descriptionForeground); margin-bottom: 12px; line-height: 1.4;"></p>
+            <div style="max-height: 320px; overflow-y: auto; border: 1px solid var(--vscode-widget-border, #444); border-radius: 4px; margin-bottom: 12px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                    <thead>
+                        <tr style="background: var(--vscode-editor-lineHighlightBackground);">
+                            <th style="padding: 6px;">Key</th>
+                            <th style="padding: 6px;">Locale</th>
+                            <th style="padding: 6px;">Local (Unsaved)</th>
+                            <th style="padding: 6px;">Disk (Incoming)</th>
+                            <th style="padding: 6px;">Resolution</th>
+                        </tr>
+                    </thead>
+                    <tbody id="conflictTableBody"></tbody>
+                </table>
+            </div>
+            <div style="display: flex; gap: 8px; justify-content: space-between; align-items: center;">
+                <div>
+                    <button class="btn btn-secondary" id="conflictKeepAllLocalBtn" style="padding: 4px 8px; font-size: 0.8rem;">Keep All Local</button>
+                    <button class="btn btn-secondary" id="conflictAcceptAllDiskBtn" style="padding: 4px 8px; font-size: 0.8rem;">Accept All Disk</button>
+                </div>
+                <div class="modal-actions" style="margin-top: 0;">
+                    <button class="btn btn-primary" id="confirmConflictResolutionBtn">Apply Resolution</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Move Modal -->
+    <div class="modal-backdrop" id="bulkMoveModal">
+        <div class="modal">
+            <h2>Move Selected Items to Module</h2>
+            <div class="form-group">
+                <label for="bulkMoveModuleSelect">Target Module (File)</label>
+                <select id="bulkMoveModuleSelect" class="select-box" style="width: 100%;"></select>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelBulkMoveBtn">Cancel</button>
+                <button class="btn btn-primary" id="confirmBulkMoveBtn">Move Items</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Module Modal -->
+    <div class="modal-backdrop" id="addModuleModal">
+        <div class="modal">
+            <h2>Add New Module (File)</h2>
+            <div class="form-group">
+                <label for="newModuleName">Module Name (e.g. auth, settings)</label>
+                <input type="text" id="newModuleName" placeholder="e.g. auth" />
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelAddModuleBtn">Cancel</button>
+                <button class="btn btn-primary" id="confirmAddModuleBtn">Create Module</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.__INITIAL_DATA__ = ${dataJson};
+    </script>
+    <script src="${scriptUri}"></script>
+</body>
+</html>

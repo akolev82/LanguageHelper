@@ -4,7 +4,8 @@ use serde::{Deserialize, Serialize};
 pub struct ProjectConfig {
   pub file_layout: String,
   pub format: String,
-  pub locales: Vec<String>,
+  #[serde(default)]
+  pub locales: Option<Vec<String>>,
 }
 
 impl ProjectConfig {
@@ -12,3 +13,4 @@ impl ProjectConfig {
     serde_json::from_str(json).map_err(|e| e.to_string())
   }
 }
+
