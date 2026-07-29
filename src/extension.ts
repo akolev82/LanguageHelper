@@ -300,7 +300,7 @@ function getWebviewContent(
   return htmlTemplate
     .replace('${styleUri}', styleUri)
     .replace('${scriptUri}', scriptUri)
-    .replace('${dataJson}', dataJson);
+    .replace('window.__INITIAL_DATA__ = null;', `window.__INITIAL_DATA__ = ${dataJson};`);
 }
 
 export function deactivate() { }
