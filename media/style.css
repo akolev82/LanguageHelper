@@ -91,11 +91,14 @@ tr.row-modified {
 tr.row-added {
     background-color: rgba(34, 197, 94, 0.15) !important;
 }
-tr.selected {
+tr.row-checked {
+    background-color: rgba(4, 57, 94, 0.4) !important;
+}
+tr.row-active {
     background-color: var(--vscode-list-activeSelectionBackground, #04395e) !important;
     color: var(--vscode-list-activeSelectionForeground, #ffffff) !important;
 }
-tr:hover:not(.selected) {
+tr:hover:not(.row-active):not(.row-checked) {
     background-color: var(--vscode-list-hoverBackground, #2a2d2e);
 }
 td input[type="text"] {
@@ -239,6 +242,21 @@ td input[type="text"]:focus {
     border-radius: 2px;
     font-size: 0.9rem;
     outline: none;
+}
+.select-box.filter-active {
+    background-color: rgba(217, 83, 79, 0.15);
+    color: var(--vscode-errorForeground, #f48771);
+    border-color: var(--vscode-errorForeground, #f48771);
+    font-weight: 600;
+}
+.footer-modules {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 8px 0;
+    border-top: 1px solid var(--vscode-widget-border, #444);
 }
 .pagination-container {
     display: flex;

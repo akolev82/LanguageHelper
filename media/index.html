@@ -46,17 +46,17 @@
                 </table>
             </div>
 
-            <div class="pagination-container">
+            <div class="footer-modules">
+                <label style="font-size: 0.85rem; font-weight: 600;">Module:</label>
+                <select id="moduleFilterSelect" class="select-box">
+                    <option value="">All Modules (Files)</option>
+                </select>
+                <button class="btn btn-secondary" id="addModuleBtn" style="padding: 4px 8px; font-size: 0.85rem;">+ Add Module</button>
+            </div>
+
+            <div class="pagination-container" style="margin-top: 0;">
                 <div class="pagination-info" id="paginationInfo">Showing 0 of 0 items</div>
                 <div class="pagination-controls">
-                    <label style="font-size: 0.85rem; font-weight: 600;">Module:</label>
-                    <select id="moduleFilterSelect" class="select-box">
-                        <option value="">All Modules (Files)</option>
-                    </select>
-                    <button class="btn btn-secondary" id="addModuleBtn" style="padding: 4px 8px; font-size: 0.85rem;">+ Add Module</button>
-
-                    <span style="margin: 0 4px; border-left: 1px solid var(--vscode-widget-border, #444); height: 16px;"></span>
-
                     <label style="font-size: 0.85rem;">Items per page:</label>
                     <select id="pageSizeSelect" class="select-box">
                         <option value="25">25</option>
@@ -103,6 +103,7 @@
                 <input type="text" id="newKey" placeholder="e.g. welcome-message" />
             </div>
             <div id="localeInputsContainer"></div>
+            <div id="addModalError" class="modal-error" style="color: var(--vscode-errorForeground, #f48771); font-size: 0.85rem; margin-top: 12px; font-weight: 600;"></div>
             <div class="modal-actions">
                 <button class="btn btn-secondary" id="cancelAddBtn">Cancel</button>
                 <button class="btn btn-primary" id="confirmAddBtn">Add</button>
@@ -123,6 +124,7 @@
                 <input type="text" id="editKey" />
             </div>
             <div id="editLocaleInputsContainer"></div>
+            <div id="editModalError" class="modal-error" style="color: var(--vscode-errorForeground, #f48771); font-size: 0.85rem; margin-top: 12px; font-weight: 600;"></div>
             <div class="modal-actions">
                 <button class="btn btn-secondary" id="cancelEditBtn">Cancel</button>
                 <button class="btn btn-primary" id="confirmEditBtn">Update</button>

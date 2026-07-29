@@ -76,6 +76,8 @@ let editingRowId = null;
 let currentConflictsData = null;
 let activeRowId = null; // currently selected row for the right panel
 
+const emptyModules = new Set(); // tracks empty modules that don't have keys yet
+
 // Splitter state
 let isDragging = false;
 let startX, startWidth;
@@ -149,10 +151,11 @@ locales.forEach(loc => {
 });
 
 function updateModuleSelects() {
-  const modules = Array.from(new Set(rows.map(r => r.file))).sort();
+  const modules = Array.from(new Set([...rows.map(r => r.file), ...emptyModules])).sort();
   const currentFilter = moduleFilterSelect.value;
   moduleFilterSelect.innerHTML = '<option value="">All Modules (Files)</option>';
-  newFile.innerHTML = ''; editModuleSelect.innerHTML = ''; bulkMoveModuleSelect.innerHTML = '';
+  newFile.innerHTML = '<option value="" disabled selected>Select a module...</option>';
+  editModuleSelect.innerHTML = ''; bulkMoveModuleSelect.innerHTML = '';
   modules.forEach(mod => {
     [moduleFilterSelect, newFile, editModuleSelect, bulkMoveModuleSelect].forEach(select => {
       const opt = document.createElement('option');
@@ -200,6 +203,12 @@ function renderTable(filterText = searchInput.value) {
   const selectedModule = moduleFilterSelect.value;
   const selectedStatus = statusFilterSelect.value;
 
+  if (selectedStatus) statusFilterSelect.classList.add('filter-active');
+  else statusFilterSelect.classList.remove('filter-active');
+  
+  if (selectedModule) moduleFilterSelect.classList.add('filter-active');
+  else moduleFilterSelect.classList.remove('filter-active');
+
   updateModuleSelects();
   updateUnsavedStatus();
 
@@ -238,9 +247,9 @@ function renderTable(filterText = searchInput.value) {
     const isSelected = selectedRowIds.has(id);
 
     const tr = document.createElement('tr');
-    if (activeRowId === id) tr.style.border = '2px solid var(--vscode-focusBorder)';
+    if (activeRowId === id) tr.classList.add('row-active');
     
-    if (isSelected) tr.classList.add('selected');
+    if (isSelected) tr.classList.add('row-checked');
     else if (status === 'new') tr.classList.add('row-added');
     else if (status === 'modified') tr.classList.add('row-modified');
 
@@ -288,7 +297,10 @@ function renderTable(filterText = searchInput.value) {
   updateSelectionUI();
 }
 
+const editModalError = document.getElementById('editModalError');
+
 function openEditModal(row) {
+  editModalError.textContent = '';
   editingRowId = getRowId(row);
   editModuleSelect.value = row.file;
   editKey.value = row.key;
@@ -299,6 +311,30 @@ function openEditModal(row) {
 }
 cancelEditBtn.addEventListener('click', () => { editModal.classList.remove('show'); });
 confirmEditBtn.addEventListener('click', () => {
+  editModalError.textContent = '';
+  if (!editModuleSelect.value) {
+    editModalError.textContent = 'Please select a module.';
+    return;
+  }
+  const keyVal = editKey.value.trim();
+  if (!keyVal) {
+    editModalError.textContent = 'Please enter a key.';
+    return;
+  }
+  const rowToEdit = rows.find(r => getRowId(r) === editingRowId);
+  if (rows.some(r => r.key === keyVal && r !== rowToEdit)) {
+    editModalError.textContent = 'This key already exists. Keys must be globally unique.';
+    return;
+  }
+  let missingLocale = false;
+  locales.forEach(loc => {
+    if (!document.getElementById('editVal_' + loc).value.trim()) missingLocale = true;
+  });
+  if (missingLocale) {
+    editModalError.textContent = 'Please provide translations for all locales.';
+    return;
+  }
+
   const row = rows.find(r => getRowId(r) === editingRowId);
   if (row) {
     const oldId = getRowId(row);
@@ -311,9 +347,8 @@ confirmEditBtn.addEventListener('click', () => {
       if (addedKeys.has(oldId)) { addedKeys.delete(oldId); addedKeys.add(newId); }
       if (selectedRowIds.has(oldId)) { selectedRowIds.delete(oldId); selectedRowIds.add(newId); }
     }
+    editModal.classList.remove('show'); renderTable(); renderRightPanel();
   }
-  editModal.classList.remove('show');
-  renderTable();
 });
 
 function promptDeleteRows(targetRows) {
@@ -354,18 +389,48 @@ confirmAddModuleBtn.addEventListener('click', () => {
   const mod = newModuleName.value.trim();
   if (mod) {
     vscode.postMessage({ command: 'createModule', moduleName: mod });
-    const newRow = { file: mod, key: 'new_key', translations: Object.fromEntries(locales.map(l => [l, ''])) };
-    rows.push(newRow);
-    addedKeys.add(getRowId(newRow));
+    emptyModules.add(mod);
   }
   addModuleModal.classList.remove('show'); renderTable();
 });
 
-addRowBtn.addEventListener('click', () => { addModal.classList.add('show'); });
+const addModalError = document.getElementById('addModalError');
+
+addRowBtn.addEventListener('click', () => { 
+  addModalError.textContent = '';
+  addModal.classList.add('show'); 
+});
 cancelAddBtn.addEventListener('click', () => { addModal.classList.remove('show'); });
 confirmAddBtn.addEventListener('click', () => {
-  const trans = {}; locales.forEach(l => trans[l] = document.getElementById('newVal_' + l).value);
-  const newRow = { file: newFile.value, key: newKey.value, translations: trans };
+  addModalError.textContent = '';
+  if (!newFile.value) {
+    addModalError.textContent = 'Please select a module.';
+    return;
+  }
+  const keyVal = newKey.value.trim();
+  if (!keyVal) {
+    addModalError.textContent = 'Please enter a key.';
+    return;
+  }
+  if (rows.some(r => r.key === keyVal)) {
+    addModalError.textContent = 'This key already exists. Keys must be globally unique.';
+    return;
+  }
+  
+  const trans = {};
+  let missingLocale = false;
+  locales.forEach(l => {
+    const val = document.getElementById('newVal_' + l).value;
+    if (!val.trim()) missingLocale = true;
+    trans[l] = val;
+  });
+  
+  if (missingLocale) {
+    addModalError.textContent = 'Please provide translations for all locales.';
+    return;
+  }
+
+  const newRow = { file: newFile.value, key: newKey.value.trim(), translations: trans };
   rows.push(newRow);
   addedKeys.add(getRowId(newRow));
   addModal.classList.remove('show'); renderTable();
