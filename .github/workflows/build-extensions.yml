@@ -3,79 +3,77 @@ name: Build VSCode and Antigravity extensions
 on:
   push:
     branches: ["**"]
+    tags: ["v*"]
   pull_request:
     branches: ["**"]
-  workflow_dispatch: {}
+  workflow_dispatch:
 
 jobs:
   build:
-    name: Build extensions
+    name: Build & Package Extensions
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        uses: taiki-e/install-action@wasm-pack
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: 20
           cache: 'npm'
 
-      - name: Build VSCode extension (if present)
-        shell: bash
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Run Rust workspace tests
+        run: cargo test --workspace --verbose
+
+      - name: Build WebAssembly modules and extension bundle
+        run: npm run build
+
+      - name: Package VSIX Extensions
         run: |
-          if [ -f package.json ]; then
-            echo "Found package.json — building VSCode extension"
-            npm ci
-            npm run build --if-present
+          # Package the VSIX extension
+          npx -y @vscode/vsce package --no-git-tag-version -o language-helper.vsix
 
-            # Try to package with vsce; prefer npx so it works without global install
-            if npx --no-install vsce --version >/dev/null 2>&1; then
-              echo "Packaging with npx vsce"
-              npx vsce package -o extension.vsix || true
-            else
-              echo "Installing vsce globally and packaging"
-              npm install -g vsce
-              vsce package -o extension.vsix || true
-            fi
-          else
-            echo "No package.json found — skipping VSCode build"
-          fi
+          # Create dedicated copies for VSCode and Antigravity distributions
+          cp language-helper.vsix language-helper-vscode.vsix
+          cp language-helper.vsix language-helper-antigravity.vsix
 
-      - name: Set up Rust (for Antigravity extension)
-        uses: actions/setup-rust@v2
-        with:
-          rust-version: stable
-
-      - name: Build Antigravity extension (Rust) (if present)
-        shell: bash
+      - name: Create Antigravity bundle archive
         run: |
-          if [ -f Cargo.toml ]; then
-            echo "Found Cargo.toml — building Rust antigravity extension"
-            cargo build --release
+          mkdir -p bundle
+          cp language-helper.vsix bundle/
+          cp -r media bundle/ 2>/dev/null || true
+          cp -r docs bundle/ 2>/dev/null || true
+          cp README.md LICENSE bundle/ 2>/dev/null || true
+          (cd bundle && zip -r ../language-helper-bundle.zip .)
 
-            # Collect binaries and packaging files into a zip
-            mkdir -p artifact
-            # copy any produced release binaries (if any)
-            cp target/release/* artifact/ 2>/dev/null || true
-
-            # If there is a directory 'antigravity' (or similar), include it
-            if [ -d antigravity ]; then
-              cp -r antigravity/* artifact/ 2>/dev/null || true
-            fi
-
-            if [ -e artifact ]; then
-              (cd artifact && zip -r ../antigravity-extension.zip .) || true
-            fi
-          else
-            echo "No Cargo.toml found — skipping Antigravity build"
-          fi
-
-      - name: Upload artifacts
+      - name: Upload Extension Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: built-extensions
+          name: language-helper-extensions
           path: |
-            extension.vsix
-            antigravity-extension.zip
-          if-no-files-found: warn
+            *.vsix
+            language-helper-bundle.zip
+          if-no-files-found: error
+
+      - name: Create GitHub Release (on tag)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            *.vsix
+            language-helper-bundle.zip
+          generate_release_notes: true
