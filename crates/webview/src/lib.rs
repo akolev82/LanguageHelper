@@ -1,11 +1,11 @@
 #![allow(non_snake_case, dead_code)]
 use dioxus::prelude::*;
 
-fn main() {
+pub fn launch_app() {
   dioxus::launch(App);
 }
 
-fn App() -> Element {
+pub fn App() -> Element {
   rsx! {
       div {
           class: "translation-grid",
