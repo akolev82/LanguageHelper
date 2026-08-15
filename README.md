@@ -233,4 +233,4 @@ This project is open source and available under the [MIT License](LICENSE).
 
 ## 👤 Author
 
-Developed by **Aleksandar Kolev** (@ 2026). Powered by **LogiMech**.
+Developed by **Aleksandar Kolev** ([github: akolev82](https://github.com/akolev82)) (@ 2026). Powered by **LogiMech**.

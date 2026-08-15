@@ -9,7 +9,7 @@ This document details all system toolchains, CLI utilities, Node.js packages, an
 | Tool | Recommended / Installed Version | Installation Command / Link | Purpose |
 | :--- | :--- | :--- | :--- |
 | **Rust Toolchain** (`rustc`, `cargo`) | `>= 1.70.0` (installed `1.96.0`) | [rustup.rs](https://rustup.rs/) | Rust compiler & package manager for `core` and `webview` crates |
-| **Node.js** | `>= 20.0.0` (installed `v24.13.1`) | [nodejs.org](https://nodejs.org/) | JavaScript runtime for VS Code extension development |
+| **Node.js** | `>= 24.0.0` (installed `v24.13.1`) | [nodejs.org](https://nodejs.org/) | JavaScript runtime for VS Code extension development |
 | **npm** | `>= 9.0.0` (installed `11.8.0`) | Included with Node.js | Package manager for Node dependencies & build scripts |
 | **wasm-pack** | `>= 0.12.0` (installed `0.12.1`) | `cargo install wasm-pack` | Compiles Rust crates (`core` and `webview`) into WebAssembly target bindings |
 | **wasm32 Target** | Target `wasm32-unknown-unknown` | `rustup target add wasm32-unknown-unknown` | Rust target triple required for WASM compilation |
