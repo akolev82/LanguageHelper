@@ -1,0 +1,81 @@
+name: Build VSCode and Antigravity extensions
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    name: Build extensions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Build VSCode extension (if present)
+        shell: bash
+        run: |
+          if [ -f package.json ]; then
+            echo "Found package.json — building VSCode extension"
+            npm ci
+            npm run build --if-present
+
+            # Try to package with vsce; prefer npx so it works without global install
+            if npx --no-install vsce --version >/dev/null 2>&1; then
+              echo "Packaging with npx vsce"
+              npx vsce package -o extension.vsix || true
+            else
+              echo "Installing vsce globally and packaging"
+              npm install -g vsce
+              vsce package -o extension.vsix || true
+            fi
+          else
+            echo "No package.json found — skipping VSCode build"
+          fi
+
+      - name: Set up Rust (for Antigravity extension)
+        uses: actions/setup-rust@v2
+        with:
+          rust-version: stable
+
+      - name: Build Antigravity extension (Rust) (if present)
+        shell: bash
+        run: |
+          if [ -f Cargo.toml ]; then
+            echo "Found Cargo.toml — building Rust antigravity extension"
+            cargo build --release
+
+            # Collect binaries and packaging files into a zip
+            mkdir -p artifact
+            # copy any produced release binaries (if any)
+            cp target/release/* artifact/ 2>/dev/null || true
+
+            # If there is a directory 'antigravity' (or similar), include it
+            if [ -d antigravity ]; then
+              cp -r antigravity/* artifact/ 2>/dev/null || true
+            fi
+
+            if [ -e artifact ]; then
+              (cd artifact && zip -r ../antigravity-extension.zip .) || true
+            fi
+          else
+            echo "No Cargo.toml found — skipping Antigravity build"
+          fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: built-extensions
+          path: |
+            extension.vsix
+            antigravity-extension.zip
+          if-no-files-found: warn
