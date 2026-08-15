@@ -6,6 +6,9 @@ src/**
 docs/**
 .gitignore
 .pre-commit-config.yaml
+.nvmrc
+.node-version
+.npmrc
 Cargo.toml
 Cargo.lock
 rustfmt.toml

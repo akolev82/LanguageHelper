@@ -183,7 +183,7 @@ LanguageHelper/
 
 Ensure the following tools are installed on your machine:
 
-- **Node.js**: `>= 20.0.0`
+- **Node.js**: `>= 24.0.0`
 - **npm**: `>= 9.0.0`
 - **Rust toolchain**: `>= 1.70.0` with `wasm32-unknown-unknown` target:
   ```bash
